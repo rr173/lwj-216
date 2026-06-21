@@ -47,6 +47,9 @@ export interface BidCandidate {
 export interface BidResult {
     winnerPlanId: string | null;
     actualCost: number;
+    originalCost?: number;
+    discountRate?: number;
+    appliedDiscount?: boolean;
     timestamp: number;
     adSlotId: string;
 }

@@ -34,7 +34,7 @@ export class AntiCheatService {
   private requestWindows: Map<string, WindowEntry[]> = new Map();
   private reputations: Map<string, AdSlotReputation> = new Map();
   private blockRecords: BlockRecord[] = [];
-  private timestampGroups: Map<string, Map<number, number>> = new Map();
+  private timestampGroups: Map<string, Map<number, { count: number; flagged: boolean }>> = new Map();
   private requestStatsByDateHour: Map<string, {
     total: number;
     blocked: number;
@@ -153,8 +153,6 @@ export class AntiCheatService {
 
     const group = this.timestampGroups.get(adSlotId)!;
     const flooredTs = Math.floor(requestTimestamp / 1000) * 1000;
-    const currentCount = (group.get(flooredTs) || 0) + 1;
-    group.set(flooredTs, currentCount);
 
     const cutoffMs = now - (this.config.windowSizeSeconds * 1000);
     for (const ts of group.keys()) {
@@ -163,15 +161,36 @@ export class AntiCheatService {
       }
     }
 
-    if (currentCount > this.config.timestampDuplicateThreshold) {
+    let entry = group.get(flooredTs);
+    if (!entry) {
+      entry = { count: 0, flagged: false };
+    }
+
+    if (entry.flagged) {
+      entry.count += 1;
+      group.set(flooredTs, entry);
       return {
         passed: false,
         blocked: true,
         reason: 'timestamp_duplicate',
-        blockDetails: { timestampDuplicateCount: currentCount },
+        blockDetails: { timestampDuplicateCount: entry.count },
       };
     }
 
+    entry.count += 1;
+
+    if (entry.count > this.config.timestampDuplicateThreshold) {
+      entry.flagged = true;
+      group.set(flooredTs, entry);
+      return {
+        passed: false,
+        blocked: true,
+        reason: 'timestamp_duplicate',
+        blockDetails: { timestampDuplicateCount: entry.count },
+      };
+    }
+
+    group.set(flooredTs, entry);
     return { passed: true, blocked: false };
   }
 

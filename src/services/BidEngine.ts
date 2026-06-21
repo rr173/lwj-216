@@ -44,6 +44,9 @@ export class BidEngine {
       return {
         winnerPlanId: null,
         actualCost: 0,
+        originalCost: 0,
+        discountRate,
+        appliedDiscount: false,
         timestamp,
         adSlotId,
       };
@@ -65,11 +68,20 @@ export class BidEngine {
       actualCost = roundToCents(reservePrice + 0.01);
     }
 
+    const originalCost = actualCost;
+    const appliedDiscount = discountRate < 1.0 && actualCost > 0;
+    if (appliedDiscount) {
+      actualCost = roundToCents(actualCost * discountRate);
+    }
+
     const winnerPlan = this.planManager.getPlan(winner.planId);
     if (!winnerPlan) {
       return {
         winnerPlanId: null,
         actualCost: 0,
+        originalCost: 0,
+        discountRate,
+        appliedDiscount: false,
         timestamp,
         adSlotId,
       };
@@ -93,6 +105,9 @@ export class BidEngine {
       return {
         winnerPlanId: null,
         actualCost: 0,
+        originalCost,
+        discountRate,
+        appliedDiscount,
         timestamp,
         adSlotId,
       };
@@ -115,6 +130,9 @@ export class BidEngine {
     return {
       winnerPlanId: winner.planId,
       actualCost,
+      originalCost,
+      discountRate,
+      appliedDiscount,
       timestamp,
       adSlotId,
     };
