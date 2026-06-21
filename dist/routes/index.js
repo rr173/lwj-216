@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createRouter = createRouter;
 const express_1 = require("express");
-function createRouter(planController, bidController, reportController, antiCheatController) {
+function createRouter(planController, bidController, reportController, antiCheatController, stressTestController) {
     const router = (0, express_1.Router)();
     router.get('/health', (req, res) => {
         res.json({
@@ -31,6 +31,18 @@ function createRouter(planController, bidController, reportController, antiCheat
         router.get('/anticheat/stats', antiCheatController.getGlobalStats);
         router.get('/anticheat/config', antiCheatController.getConfig);
         router.put('/anticheat/config', antiCheatController.updateConfig);
+    }
+    if (stressTestController) {
+        router.post('/stress/scenarios', stressTestController.createScenario);
+        router.get('/stress/scenarios', stressTestController.getAllScenarios);
+        router.get('/stress/scenarios/:scenarioId', stressTestController.getScenario);
+        router.put('/stress/scenarios/:scenarioId', stressTestController.updateScenario);
+        router.delete('/stress/scenarios/:scenarioId', stressTestController.deleteScenario);
+        router.post('/stress/scenarios/:scenarioId/run', stressTestController.runScenario);
+        router.post('/stress/abort', stressTestController.abortRun);
+        router.get('/stress/progress', stressTestController.getProgress);
+        router.get('/stress/history', stressTestController.getHistoryList);
+        router.get('/stress/history/:historyId', stressTestController.getHistoryReport);
     }
     return router;
 }

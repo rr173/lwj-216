@@ -3,12 +3,14 @@ import { PlanController } from '../controllers/PlanController';
 import { BidController } from '../controllers/BidController';
 import { ReportController } from '../controllers/ReportController';
 import { AntiCheatController } from '../controllers/AntiCheatController';
+import { StressTestController } from '../controllers/StressTestController';
 
 export function createRouter(
   planController: PlanController,
   bidController: BidController,
   reportController: ReportController,
-  antiCheatController?: AntiCheatController
+  antiCheatController?: AntiCheatController,
+  stressTestController?: StressTestController
 ): Router {
   const router = Router();
 
@@ -47,6 +49,21 @@ export function createRouter(
 
     router.get('/anticheat/config', antiCheatController.getConfig);
     router.put('/anticheat/config', antiCheatController.updateConfig);
+  }
+
+  if (stressTestController) {
+    router.post('/stress/scenarios', stressTestController.createScenario);
+    router.get('/stress/scenarios', stressTestController.getAllScenarios);
+    router.get('/stress/scenarios/:scenarioId', stressTestController.getScenario);
+    router.put('/stress/scenarios/:scenarioId', stressTestController.updateScenario);
+    router.delete('/stress/scenarios/:scenarioId', stressTestController.deleteScenario);
+
+    router.post('/stress/scenarios/:scenarioId/run', stressTestController.runScenario);
+    router.post('/stress/abort', stressTestController.abortRun);
+    router.get('/stress/progress', stressTestController.getProgress);
+
+    router.get('/stress/history', stressTestController.getHistoryList);
+    router.get('/stress/history/:historyId', stressTestController.getHistoryReport);
   }
 
   return router;

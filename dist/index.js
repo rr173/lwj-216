@@ -9,10 +9,12 @@ const BidEngine_1 = require("./services/BidEngine");
 const ReportService_1 = require("./services/ReportService");
 const DataInitializer_1 = require("./services/DataInitializer");
 const AntiCheatService_1 = require("./services/AntiCheatService");
+const StressTestEngine_1 = require("./services/StressTestEngine");
 const PlanController_1 = require("./controllers/PlanController");
 const BidController_1 = require("./controllers/BidController");
 const ReportController_1 = require("./controllers/ReportController");
 const AntiCheatController_1 = require("./controllers/AntiCheatController");
+const StressTestController_1 = require("./controllers/StressTestController");
 const routes_1 = require("./routes");
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const planManager = new PlanManager_1.PlanManager();
@@ -20,10 +22,12 @@ const bidEngine = new BidEngine_1.BidEngine(planManager);
 const antiCheatService = new AntiCheatService_1.AntiCheatService();
 const reportService = new ReportService_1.ReportService(planManager, bidEngine, antiCheatService);
 const dataInitializer = new DataInitializer_1.DataInitializer(planManager, bidEngine, reportService);
+const stressTestEngine = new StressTestEngine_1.StressTestEngine(bidEngine, antiCheatService, planManager);
 const planController = new PlanController_1.PlanController(planManager);
 const bidController = new BidController_1.BidController(bidEngine, antiCheatService);
 const reportController = new ReportController_1.ReportController(reportService);
 const antiCheatController = new AntiCheatController_1.AntiCheatController(antiCheatService);
+const stressTestController = new StressTestController_1.StressTestController(stressTestEngine);
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
@@ -31,7 +35,7 @@ app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
-const router = (0, routes_1.createRouter)(planController, bidController, reportController, antiCheatController);
+const router = (0, routes_1.createRouter)(planController, bidController, reportController, antiCheatController, stressTestController);
 app.use('/api', router);
 app.use((req, res) => {
     res.status(404).json({
@@ -92,6 +96,18 @@ app.listen(PORT, () => {
    GET    /api/anticheat/stats             - 全局拦截统计(总拦截/按原因/低信誉广告位)
    GET    /api/anticheat/config            - 获取反作弊配置
    PUT    /api/anticheat/config            - 更新反作弊配置(动态生效)
+
+7. 竞价模拟压测引擎
+   POST   /api/stress/scenarios               - 创建压测场景
+   GET    /api/stress/scenarios               - 获取所有场景
+   GET    /api/stress/scenarios/:scenarioId   - 获取单个场景
+   PUT    /api/stress/scenarios/:scenarioId   - 编辑场景
+   DELETE /api/stress/scenarios/:scenarioId   - 删除场景
+   POST   /api/stress/scenarios/:scenarioId/run - 运行场景
+   POST   /api/stress/abort                   - 中止当前运行
+   GET    /api/stress/progress                - 查询实时进度
+   GET    /api/stress/history                 - 历史运行记录列表
+   GET    /api/stress/history/:historyId      - 查看完整报告
 
 ========================================
 示例请求:

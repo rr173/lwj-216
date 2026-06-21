@@ -189,3 +189,114 @@ export interface DateReportWithAntiCheat extends DateReport {
     hourlyStats: TimeSlotAntiCheatStats[];
   };
 }
+
+export interface StressTestSlotConfig {
+  adSlotId: string;
+  frequencyPerSecond: number;
+  reservePriceMin: number;
+  reservePriceMax: number;
+}
+
+export interface StressTestScenario {
+  id: string;
+  name: string;
+  durationSeconds: number;
+  slots: StressTestSlotConfig[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateStressTestScenarioRequest {
+  name: string;
+  durationSeconds: number;
+  slots: StressTestSlotConfig[];
+}
+
+export interface UpdateStressTestScenarioRequest {
+  name?: string;
+  durationSeconds?: number;
+  slots?: StressTestSlotConfig[];
+}
+
+export type StressTestRunStatus = 'running' | 'completed' | 'aborted';
+
+export interface StressTestRunProgress {
+  scenarioId: string;
+  scenarioName: string;
+  status: StressTestRunStatus;
+  elapsedSeconds: number;
+  durationSeconds: number;
+  totalRequestsSent: number;
+  totalBlocked: number;
+  totalPassed: number;
+  startTime: number;
+}
+
+export interface StressTestRequestRecord {
+  adSlotId: string;
+  reservePrice: number;
+  timestamp: number;
+  blocked: boolean;
+  blockReason?: BlockReason;
+  winnerPlanId: string | null;
+  actualCost: number;
+}
+
+export interface StressTestOverview {
+  totalRequests: number;
+  totalPassed: number;
+  totalBlocked: number;
+  blockRate: number;
+  planSpends: {
+    planId: string;
+    planName: string;
+    totalSpent: number;
+    totalImpressions: number;
+  }[];
+}
+
+export interface StressTestPlanAttribution {
+  planId: string;
+  planName: string;
+  bySlot: {
+    adSlotId: string;
+    spent: number;
+  }[];
+  byTimeInterval: {
+    intervalStart: number;
+    intervalEnd: number;
+    spent: number;
+  }[];
+}
+
+export interface StressTestAntiCheatDimension {
+  slotBlocks: {
+    adSlotId: string;
+    totalBlocked: number;
+    byReason: Partial<Record<BlockReason, number>>;
+  }[];
+}
+
+export interface StressTestReport {
+  scenarioId: string;
+  scenarioName: string;
+  durationSeconds: number;
+  runStartTime: number;
+  runEndTime: number;
+  status: StressTestRunStatus;
+  overview: StressTestOverview;
+  planAttribution: StressTestPlanAttribution[];
+  antiCheatDimension: StressTestAntiCheatDimension;
+}
+
+export interface StressTestHistoryRecord {
+  id: string;
+  scenarioId: string;
+  scenarioName: string;
+  scenarioConfig: StressTestScenario;
+  runStartTime: number;
+  runEndTime: number;
+  status: StressTestRunStatus;
+  totalRequests: number;
+  report: StressTestReport;
+}

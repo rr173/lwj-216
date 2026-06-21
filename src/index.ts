@@ -4,10 +4,12 @@ import { BidEngine } from './services/BidEngine';
 import { ReportService } from './services/ReportService';
 import { DataInitializer } from './services/DataInitializer';
 import { AntiCheatService } from './services/AntiCheatService';
+import { StressTestEngine } from './services/StressTestEngine';
 import { PlanController } from './controllers/PlanController';
 import { BidController } from './controllers/BidController';
 import { ReportController } from './controllers/ReportController';
 import { AntiCheatController } from './controllers/AntiCheatController';
+import { StressTestController } from './controllers/StressTestController';
 import { createRouter } from './routes';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
@@ -17,11 +19,13 @@ const bidEngine = new BidEngine(planManager);
 const antiCheatService = new AntiCheatService();
 const reportService = new ReportService(planManager, bidEngine, antiCheatService);
 const dataInitializer = new DataInitializer(planManager, bidEngine, reportService);
+const stressTestEngine = new StressTestEngine(bidEngine, antiCheatService, planManager);
 
 const planController = new PlanController(planManager);
 const bidController = new BidController(bidEngine, antiCheatService);
 const reportController = new ReportController(reportService);
 const antiCheatController = new AntiCheatController(antiCheatService);
+const stressTestController = new StressTestController(stressTestEngine);
 
 const app = express();
 
@@ -33,7 +37,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const router = createRouter(planController, bidController, reportController, antiCheatController);
+const router = createRouter(planController, bidController, reportController, antiCheatController, stressTestController);
 app.use('/api', router);
 
 app.use((req, res) => {
@@ -100,6 +104,18 @@ app.listen(PORT, () => {
    GET    /api/anticheat/stats             - 全局拦截统计(总拦截/按原因/低信誉广告位)
    GET    /api/anticheat/config            - 获取反作弊配置
    PUT    /api/anticheat/config            - 更新反作弊配置(动态生效)
+
+7. 竞价模拟压测引擎
+   POST   /api/stress/scenarios               - 创建压测场景
+   GET    /api/stress/scenarios               - 获取所有场景
+   GET    /api/stress/scenarios/:scenarioId   - 获取单个场景
+   PUT    /api/stress/scenarios/:scenarioId   - 编辑场景
+   DELETE /api/stress/scenarios/:scenarioId   - 删除场景
+   POST   /api/stress/scenarios/:scenarioId/run - 运行场景
+   POST   /api/stress/abort                   - 中止当前运行
+   GET    /api/stress/progress                - 查询实时进度
+   GET    /api/stress/history                 - 历史运行记录列表
+   GET    /api/stress/history/:historyId      - 查看完整报告
 
 ========================================
 示例请求:

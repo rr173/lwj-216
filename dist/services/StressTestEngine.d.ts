@@ -1,0 +1,40 @@
+import { BidEngine } from './BidEngine';
+import { AntiCheatService } from './AntiCheatService';
+import { PlanManager } from './PlanManager';
+import { StressTestScenario, CreateStressTestScenarioRequest, UpdateStressTestScenarioRequest, StressTestRunStatus, StressTestRunProgress, StressTestHistoryRecord } from '../types';
+export declare class StressTestEngine {
+    private scenarios;
+    private history;
+    private currentRun;
+    private bidEngine;
+    private antiCheatService;
+    private planManager;
+    constructor(bidEngine: BidEngine, antiCheatService: AntiCheatService, planManager: PlanManager);
+    createScenario(request: CreateStressTestScenarioRequest): StressTestScenario;
+    updateScenario(scenarioId: string, request: UpdateStressTestScenarioRequest): StressTestScenario;
+    deleteScenario(scenarioId: string): void;
+    getScenario(scenarioId: string): StressTestScenario | undefined;
+    getAllScenarios(): StressTestScenario[];
+    isRunning(): boolean;
+    runScenario(scenarioId: string): StressTestRunProgress;
+    abortRun(): StressTestRunProgress;
+    getProgress(): StressTestRunProgress | null;
+    private buildProgressFromCurrentRun;
+    getHistoryList(): {
+        id: string;
+        scenarioName: string;
+        runStartTime: number;
+        status: StressTestRunStatus;
+        totalRequests: number;
+    }[];
+    getHistoryReport(historyId: string): StressTestHistoryRecord | undefined;
+    private startRequestGeneration;
+    private generateAndProcessRequest;
+    private completeRun;
+    private finalizeRun;
+    private generateReport;
+    private buildOverview;
+    private buildPlanAttribution;
+    private buildAntiCheatDimension;
+    private validateScenarioRequest;
+}
