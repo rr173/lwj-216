@@ -1,0 +1,96 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BidEngine = void 0;
+const uuid_1 = require("uuid");
+const utils_1 = require("../utils");
+class BidEngine {
+    constructor(planManager) {
+        this.spendRecords = new Map();
+        this.planManager = planManager;
+    }
+    processBidRequest(request) {
+        const { adSlotId, reservePrice, timestamp } = request;
+        const eligiblePlans = this.planManager.getEligiblePlans(timestamp);
+        const candidates = [];
+        for (const plan of eligiblePlans) {
+            this.planManager.incrementBidCount(plan.id);
+            const bidPrice = this.calculateBidPrice(plan, reservePrice);
+            if (bidPrice <= 0)
+                continue;
+            const estimatedCost = (0, utils_1.roundToCents)(reservePrice + 0.01);
+            const remainingBudget = (0, utils_1.roundToCents)(plan.dailyBudget - plan.todaySpent);
+            if (remainingBudget < estimatedCost)
+                continue;
+            candidates.push({
+                planId: plan.id,
+                bidPrice,
+                priority: plan.priority,
+            });
+        }
+        if (candidates.length === 0) {
+            return {
+                winnerPlanId: null,
+                actualCost: 0,
+                timestamp,
+                adSlotId,
+            };
+        }
+        candidates.sort((a, b) => {
+            if (b.bidPrice !== a.bidPrice) {
+                return b.bidPrice - a.bidPrice;
+            }
+            return b.priority - a.priority;
+        });
+        const winner = candidates[0];
+        let actualCost;
+        if (candidates.length >= 2) {
+            actualCost = (0, utils_1.roundToCents)(candidates[1].bidPrice + 0.01);
+        }
+        else {
+            actualCost = (0, utils_1.roundToCents)(reservePrice + 0.01);
+        }
+        this.planManager.incrementWinCount(winner.planId);
+        this.planManager.addSpend(winner.planId, actualCost, timestamp);
+        const spendRecord = {
+            id: (0, uuid_1.v4)(),
+            planId: winner.planId,
+            amount: actualCost,
+            timestamp,
+            adSlotId,
+            date: (0, utils_1.formatDate)(timestamp),
+        };
+        this.addSpendRecord(spendRecord);
+        return {
+            winnerPlanId: winner.planId,
+            actualCost,
+            timestamp,
+            adSlotId,
+        };
+    }
+    calculateBidPrice(plan, reservePrice) {
+        const maxBid = (0, utils_1.roundToCents)(plan.targetCPM / 1000);
+        if (maxBid <= reservePrice) {
+            return 0;
+        }
+        return maxBid;
+    }
+    addSpendRecord(record) {
+        const date = record.date;
+        if (!this.spendRecords.has(date)) {
+            this.spendRecords.set(date, []);
+        }
+        this.spendRecords.get(date).push(record);
+    }
+    getSpendRecordsByPlanAndDate(planId, date) {
+        const records = this.spendRecords.get(date) || [];
+        return records.filter(r => r.planId === planId).sort((a, b) => a.timestamp - b.timestamp);
+    }
+    getSpendRecordsByDate(date) {
+        return this.spendRecords.get(date) || [];
+    }
+    addHistoricalSpendRecord(record) {
+        this.addSpendRecord(record);
+    }
+}
+exports.BidEngine = BidEngine;
+//# sourceMappingURL=BidEngine.js.map

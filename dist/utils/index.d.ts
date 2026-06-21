@@ -1,0 +1,12 @@
+export declare function formatDate(timestamp: number): string;
+export declare function formatDateTime(timestamp: number): string;
+export declare function getStartOfDay(timestamp: number): number;
+export declare function getEndOfDay(timestamp: number): number;
+export declare function getTimeSlotStart(timestamp: number, startHour: number, slotIndex: number): number;
+export declare function getTimeSlotEnd(timestamp: number, startHour: number, slotIndex: number): number;
+export declare function getCurrentSlotIndex(timestamp: number, startHour: number): number;
+export declare function getTotalSlotCount(startHour: number, endHour: number): number;
+export declare function isInTimeSlot(timestamp: number, startHour: number, endHour: number): boolean;
+export declare function roundToCents(amount: number): number;
+export declare function roundToDecimals(amount: number, decimals: number): number;
+export declare function generateRandomId(): string;
