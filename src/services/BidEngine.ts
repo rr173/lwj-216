@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PlanManager } from './PlanManager';
-import { BidRequest, BidResult, BidCandidate, SpendRecord } from '../types';
-import { formatDate, roundToCents } from '../utils';
+import { BidRequest, BidResult, BidCandidate, SpendRecord, Plan } from '../types';
+import { formatDate, roundToCents, getCurrentSlotIndex } from '../utils';
 
 export class BidEngine {
   private planManager: PlanManager;
@@ -24,9 +24,7 @@ export class BidEngine {
       const bidPrice = this.calculateBidPrice(plan, reservePrice);
       if (bidPrice <= 0) continue;
 
-      const estimatedCost = roundToCents(reservePrice + 0.01);
-      const remainingBudget = roundToCents(plan.dailyBudget - plan.todaySpent);
-      if (remainingBudget < estimatedCost) continue;
+      if (!this.canAfford(plan, bidPrice, reservePrice, timestamp)) continue;
 
       candidates.push({
         planId: plan.id,
@@ -60,6 +58,39 @@ export class BidEngine {
       actualCost = roundToCents(reservePrice + 0.01);
     }
 
+    const winnerPlan = this.planManager.getPlan(winner.planId);
+    if (!winnerPlan) {
+      return {
+        winnerPlanId: null,
+        actualCost: 0,
+        timestamp,
+        adSlotId,
+      };
+    }
+
+    const remainingDailyBudget = roundToCents(winnerPlan.dailyBudget - winnerPlan.todaySpent);
+    if (actualCost > remainingDailyBudget) {
+      actualCost = remainingDailyBudget;
+    }
+
+    const currentSlotIndex = getCurrentSlotIndex(timestamp, winnerPlan.timeSlot.startHour);
+    const currentSlot = winnerPlan.timeSlotBudgets[currentSlotIndex];
+    if (currentSlot) {
+      const remainingSlotBudget = roundToCents(currentSlot.allocatedBudget - currentSlot.spentBudget);
+      if (actualCost > remainingSlotBudget) {
+        actualCost = remainingSlotBudget;
+      }
+    }
+
+    if (actualCost <= 0) {
+      return {
+        winnerPlanId: null,
+        actualCost: 0,
+        timestamp,
+        adSlotId,
+      };
+    }
+
     this.planManager.incrementWinCount(winner.planId);
     this.planManager.addSpend(winner.planId, actualCost, timestamp);
 
@@ -80,6 +111,26 @@ export class BidEngine {
       timestamp,
       adSlotId,
     };
+  }
+
+  private canAfford(plan: Plan, bidPrice: number, reservePrice: number, timestamp: number): boolean {
+    const maxPossibleCost = bidPrice;
+
+    const remainingDailyBudget = roundToCents(plan.dailyBudget - plan.todaySpent);
+    if (remainingDailyBudget < maxPossibleCost && remainingDailyBudget < roundToCents(reservePrice + 0.01)) {
+      return false;
+    }
+
+    const currentSlotIndex = getCurrentSlotIndex(timestamp, plan.timeSlot.startHour);
+    const currentSlot = plan.timeSlotBudgets[currentSlotIndex];
+    if (currentSlot) {
+      const remainingSlotBudget = roundToCents(currentSlot.allocatedBudget - currentSlot.spentBudget);
+      if (remainingSlotBudget < maxPossibleCost && remainingSlotBudget < roundToCents(reservePrice + 0.01)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private calculateBidPrice(plan: { targetCPM: number }, reservePrice: number): number {

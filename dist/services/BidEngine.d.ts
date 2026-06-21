@@ -5,6 +5,7 @@ export declare class BidEngine {
     private spendRecords;
     constructor(planManager: PlanManager);
     processBidRequest(request: BidRequest): BidResult;
+    private canAfford;
     private calculateBidPrice;
     private addSpendRecord;
     getSpendRecordsByPlanAndDate(planId: string, date: string): SpendRecord[];

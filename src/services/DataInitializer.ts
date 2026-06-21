@@ -110,9 +110,13 @@ export class DataInitializer {
 
       if (eligiblePlans.length === 0) continue;
 
+      const shuffledEligible = [...eligiblePlans].sort(() => Math.random() - 0.5);
+      const numParticipants = Math.max(1, Math.floor(Math.random() * Math.min(3, shuffledEligible.length)) + 1);
+      const selectedPlans = shuffledEligible.slice(0, numParticipants);
+
       const candidates: { planId: string; bidPrice: number; priority: number }[] = [];
 
-      for (const planId of eligiblePlans) {
+      for (const planId of selectedPlans) {
         const plan = this.planManager.getPlan(planId)!;
         planBidCounts.set(planId, (planBidCounts.get(planId) || 0) + 1);
 
@@ -120,9 +124,16 @@ export class DataInitializer {
         if (bidPrice <= reservePrice) continue;
 
         const planTotalSpent = planSpent.get(planId) || 0;
-        const remaining = plan.dailyBudget - planTotalSpent;
+        const remainingDaily = roundToCents(plan.dailyBudget - planTotalSpent);
         const estimatedCost = roundToCents(reservePrice + 0.01);
-        if (remaining < estimatedCost) continue;
+        if (remainingDaily < estimatedCost) continue;
+
+        const currentSlotIndex = Math.floor((((new Date(timestamp)).getHours() - plan.timeSlot.startHour) * 60 + (new Date(timestamp)).getMinutes()) / 15);
+        const currentSlot = plan.timeSlotBudgets[currentSlotIndex];
+        if (currentSlot) {
+          const remainingSlot = roundToCents(currentSlot.allocatedBudget - currentSlot.spentBudget);
+          if (remainingSlot < estimatedCost) continue;
+        }
 
         candidates.push({
           planId,
@@ -139,6 +150,7 @@ export class DataInitializer {
       });
 
       const winner = candidates[0];
+      const winnerPlan = this.planManager.getPlan(winner.planId)!;
       let actualCost: number;
 
       if (candidates.length >= 2) {
@@ -146,6 +158,22 @@ export class DataInitializer {
       } else {
         actualCost = roundToCents(reservePrice + 0.01);
       }
+
+      const remainingDailyBudget = roundToCents(winnerPlan.dailyBudget - (planSpent.get(winner.planId) || 0));
+      if (actualCost > remainingDailyBudget) {
+        actualCost = remainingDailyBudget;
+      }
+
+      const currentSlotIndex = Math.floor((((new Date(timestamp)).getHours() - winnerPlan.timeSlot.startHour) * 60 + (new Date(timestamp)).getMinutes()) / 15);
+      const winnerCurrentSlot = winnerPlan.timeSlotBudgets[currentSlotIndex];
+      if (winnerCurrentSlot) {
+        const remainingSlotBudget = roundToCents(winnerCurrentSlot.allocatedBudget - winnerCurrentSlot.spentBudget);
+        if (actualCost > remainingSlotBudget) {
+          actualCost = remainingSlotBudget;
+        }
+      }
+
+      if (actualCost <= 0) continue;
 
       planWinCounts.set(winner.planId, (planWinCounts.get(winner.planId) || 0) + 1);
       planSpent.set(winner.planId, roundToCents((planSpent.get(winner.planId) || 0) + actualCost));

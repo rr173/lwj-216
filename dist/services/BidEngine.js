@@ -17,9 +17,7 @@ class BidEngine {
             const bidPrice = this.calculateBidPrice(plan, reservePrice);
             if (bidPrice <= 0)
                 continue;
-            const estimatedCost = (0, utils_1.roundToCents)(reservePrice + 0.01);
-            const remainingBudget = (0, utils_1.roundToCents)(plan.dailyBudget - plan.todaySpent);
-            if (remainingBudget < estimatedCost)
+            if (!this.canAfford(plan, bidPrice, reservePrice, timestamp))
                 continue;
             candidates.push({
                 planId: plan.id,
@@ -49,6 +47,35 @@ class BidEngine {
         else {
             actualCost = (0, utils_1.roundToCents)(reservePrice + 0.01);
         }
+        const winnerPlan = this.planManager.getPlan(winner.planId);
+        if (!winnerPlan) {
+            return {
+                winnerPlanId: null,
+                actualCost: 0,
+                timestamp,
+                adSlotId,
+            };
+        }
+        const remainingDailyBudget = (0, utils_1.roundToCents)(winnerPlan.dailyBudget - winnerPlan.todaySpent);
+        if (actualCost > remainingDailyBudget) {
+            actualCost = remainingDailyBudget;
+        }
+        const currentSlotIndex = (0, utils_1.getCurrentSlotIndex)(timestamp, winnerPlan.timeSlot.startHour);
+        const currentSlot = winnerPlan.timeSlotBudgets[currentSlotIndex];
+        if (currentSlot) {
+            const remainingSlotBudget = (0, utils_1.roundToCents)(currentSlot.allocatedBudget - currentSlot.spentBudget);
+            if (actualCost > remainingSlotBudget) {
+                actualCost = remainingSlotBudget;
+            }
+        }
+        if (actualCost <= 0) {
+            return {
+                winnerPlanId: null,
+                actualCost: 0,
+                timestamp,
+                adSlotId,
+            };
+        }
         this.planManager.incrementWinCount(winner.planId);
         this.planManager.addSpend(winner.planId, actualCost, timestamp);
         const spendRecord = {
@@ -66,6 +93,22 @@ class BidEngine {
             timestamp,
             adSlotId,
         };
+    }
+    canAfford(plan, bidPrice, reservePrice, timestamp) {
+        const maxPossibleCost = bidPrice;
+        const remainingDailyBudget = (0, utils_1.roundToCents)(plan.dailyBudget - plan.todaySpent);
+        if (remainingDailyBudget < maxPossibleCost && remainingDailyBudget < (0, utils_1.roundToCents)(reservePrice + 0.01)) {
+            return false;
+        }
+        const currentSlotIndex = (0, utils_1.getCurrentSlotIndex)(timestamp, plan.timeSlot.startHour);
+        const currentSlot = plan.timeSlotBudgets[currentSlotIndex];
+        if (currentSlot) {
+            const remainingSlotBudget = (0, utils_1.roundToCents)(currentSlot.allocatedBudget - currentSlot.spentBudget);
+            if (remainingSlotBudget < maxPossibleCost && remainingSlotBudget < (0, utils_1.roundToCents)(reservePrice + 0.01)) {
+                return false;
+            }
+        }
+        return true;
     }
     calculateBidPrice(plan, reservePrice) {
         const maxBid = (0, utils_1.roundToCents)(plan.targetCPM / 1000);
