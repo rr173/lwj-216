@@ -1,11 +1,13 @@
 import { PlanManager } from './PlanManager';
 import { BidEngine } from './BidEngine';
-import { PlanSpendDetail, PlanOverview, DateReport } from '../types';
+import { AntiCheatService } from './AntiCheatService';
+import { PlanSpendDetail, PlanOverview, DateReport, DateReportWithAntiCheat } from '../types';
 export declare class ReportService {
     private planManager;
     private bidEngine;
+    private antiCheatService;
     private historicalData;
-    constructor(planManager: PlanManager, bidEngine: BidEngine);
+    constructor(planManager: PlanManager, bidEngine: BidEngine, antiCheatService?: AntiCheatService);
     getPlanSpendDetail(planId: string, timestamp: number): PlanSpendDetail | null;
     getAllPlansOverview(timestamp: number): PlanOverview[];
     getDateReport(date: string): DateReport;
@@ -15,4 +17,5 @@ export declare class ReportService {
         bidCount: number;
         winCount: number;
     }): void;
+    getDateReportWithAntiCheat(date: string): DateReportWithAntiCheat;
 }

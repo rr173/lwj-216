@@ -11,8 +11,9 @@ export class BidEngine {
     this.planManager = planManager;
   }
 
-  processBidRequest(request: BidRequest): BidResult {
+  processBidRequest(request: BidRequest, options?: { discountRate?: number }): BidResult {
     const { adSlotId, reservePrice, timestamp } = request;
+    const discountRate = options?.discountRate ?? 1.0;
 
     const eligiblePlans = this.planManager.getEligiblePlans(timestamp);
 
@@ -21,8 +22,14 @@ export class BidEngine {
     for (const plan of eligiblePlans) {
       this.planManager.incrementBidCount(plan.id);
 
-      const bidPrice = this.calculateBidPrice(plan, reservePrice);
+      let bidPrice = this.calculateBidPrice(plan, reservePrice);
       if (bidPrice <= 0) continue;
+
+      if (discountRate < 1.0) {
+        bidPrice = roundToCents(bidPrice * discountRate);
+      }
+
+      if (bidPrice <= reservePrice) continue;
 
       if (!this.canAfford(plan, bidPrice, reservePrice, timestamp)) continue;
 

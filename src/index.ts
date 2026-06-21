@@ -3,21 +3,25 @@ import { PlanManager } from './services/PlanManager';
 import { BidEngine } from './services/BidEngine';
 import { ReportService } from './services/ReportService';
 import { DataInitializer } from './services/DataInitializer';
+import { AntiCheatService } from './services/AntiCheatService';
 import { PlanController } from './controllers/PlanController';
 import { BidController } from './controllers/BidController';
 import { ReportController } from './controllers/ReportController';
+import { AntiCheatController } from './controllers/AntiCheatController';
 import { createRouter } from './routes';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 const planManager = new PlanManager();
 const bidEngine = new BidEngine(planManager);
-const reportService = new ReportService(planManager, bidEngine);
+const antiCheatService = new AntiCheatService();
+const reportService = new ReportService(planManager, bidEngine, antiCheatService);
 const dataInitializer = new DataInitializer(planManager, bidEngine, reportService);
 
 const planController = new PlanController(planManager);
-const bidController = new BidController(bidEngine);
+const bidController = new BidController(bidEngine, antiCheatService);
 const reportController = new ReportController(reportService);
+const antiCheatController = new AntiCheatController(antiCheatService);
 
 const app = express();
 
@@ -29,7 +33,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const router = createRouter(planController, bidController, reportController);
+const router = createRouter(planController, bidController, reportController, antiCheatController);
 app.use('/api', router);
 
 app.use((req, res) => {
@@ -76,7 +80,7 @@ app.listen(PORT, () => {
    POST   /api/plans/:planId/resume  - 恢复计划
 
 3. 竞价处理
-   POST   /api/bid                - 处理竞价请求
+   POST   /api/bid                - 处理竞价请求 (已集成反作弊检查)
 
 4. 花费查询
    GET    /api/spend/plans/:planId    - 计划花费明细
@@ -84,7 +88,18 @@ app.listen(PORT, () => {
 
 5. 日结报表
    GET    /api/reports/today          - 今日报表
+   GET    /api/reports/today?includeAntiCheat=true - 今日报表(含反作弊维度)
    GET    /api/reports/:date          - 指定日期报表 (YYYY-MM-DD)
+   GET    /api/reports/:date?includeAntiCheat=true - 指定日期报表(含反作弊维度)
+
+6. 反作弊与流量质量
+   GET    /api/anticheat/blocks            - 全局拦截记录列表
+   GET    /api/anticheat/blocks/:adSlotId  - 指定广告位拦截历史
+   GET    /api/anticheat/reputations       - 所有广告位信誉分列表
+   GET    /api/anticheat/reputations/:adSlotId - 指定广告位当前信誉分
+   GET    /api/anticheat/stats             - 全局拦截统计(总拦截/按原因/低信誉广告位)
+   GET    /api/anticheat/config            - 获取反作弊配置
+   PUT    /api/anticheat/config            - 更新反作弊配置(动态生效)
 
 ========================================
 示例请求:
@@ -100,7 +115,7 @@ curl -X POST http://localhost:${PORT}/api/plans \\
     "priority": 5
   }'
 
-# 竞价请求
+# 竞价请求 (先过反作弊，通过才进竞价)
 curl -X POST http://localhost:${PORT}/api/bid \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -109,11 +124,35 @@ curl -X POST http://localhost:${PORT}/api/bid \\
     "timestamp": ' + Date.now() + '
   }'
 
+# 查看反作弊全局统计
+curl http://localhost:${PORT}/api/anticheat/stats
+
+# 查看广告位信誉分
+curl http://localhost:${PORT}/api/anticheat/reputations/slot_home_top
+
+# 获取反作弊配置
+curl http://localhost:${PORT}/api/anticheat/config
+
+# 更新反作弊配置(动态生效，无需重启)
+curl -X PUT http://localhost:${PORT}/api/anticheat/config \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "windowSizeSeconds": 60,
+    "frequencyThreshold": 100,
+    "timestampDuplicateThreshold": 10,
+    "frequencyPenalty": 5,
+    "timestampPenalty": 20,
+    "reputationRecoveryPerHour": 2,
+    "reputationDiscountThreshold": 60,
+    "reputationRejectThreshold": 30,
+    "reputationDiscountRate": 0.8
+  }'
+
+# 查看今日报表(含反作弊拦截率、通过率)
+curl "http://localhost:${PORT}/api/reports/today?includeAntiCheat=true"
+
 # 查看花费概览
 curl http://localhost:${PORT}/api/spend/overview
-
-# 查看今日报表
-curl http://localhost:${PORT}/api/reports/today
 ========================================
   `);
 });

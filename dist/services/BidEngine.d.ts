@@ -4,7 +4,9 @@ export declare class BidEngine {
     private planManager;
     private spendRecords;
     constructor(planManager: PlanManager);
-    processBidRequest(request: BidRequest): BidResult;
+    processBidRequest(request: BidRequest, options?: {
+        discountRate?: number;
+    }): BidResult;
     private canAfford;
     private calculateBidPrice;
     private addSpendRecord;

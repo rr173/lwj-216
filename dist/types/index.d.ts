@@ -96,3 +96,73 @@ export interface DateReport {
     date: string;
     reports: DailyReport[];
 }
+export type BlockReason = 'frequency_exceeded' | 'timestamp_duplicate' | 'reputation_too_low';
+export interface AntiCheatConfig {
+    windowSizeSeconds: number;
+    frequencyThreshold: number;
+    timestampDuplicateThreshold: number;
+    frequencyPenalty: number;
+    timestampPenalty: number;
+    reputationRecoveryPerHour: number;
+    reputationDiscountThreshold: number;
+    reputationRejectThreshold: number;
+    reputationDiscountRate: number;
+    maxReputation: number;
+    initialReputation: number;
+}
+export interface AdSlotReputation {
+    adSlotId: string;
+    score: number;
+    lastUpdateTime: number;
+    lastRecoveryTime: number;
+}
+export interface BlockRecord {
+    id: string;
+    adSlotId: string;
+    reason: BlockReason;
+    timestamp: number;
+    windowRequestCount?: number;
+    timestampDuplicateCount?: number;
+    reputationScore?: number;
+}
+export interface AntiCheatCheckResult {
+    passed: boolean;
+    blocked: boolean;
+    reason?: BlockReason;
+    blockDetails?: {
+        windowRequestCount?: number;
+        timestampDuplicateCount?: number;
+        reputationScore?: number;
+    };
+    reputationAdjustment?: number;
+    applyDiscount?: boolean;
+    discountRate?: number;
+}
+export interface GlobalAntiCheatStats {
+    totalBlocked: number;
+    byReason: Record<BlockReason, number>;
+    lowReputationSlots: {
+        adSlotId: string;
+        reputation: number;
+    }[];
+    lowReputationSlotCount: number;
+}
+export interface TimeSlotAntiCheatStats {
+    timeSlot: string;
+    totalRequests: number;
+    blockedCount: number;
+    passedCount: number;
+    blockRate: number;
+    passRate: number;
+}
+export interface DateReportWithAntiCheat extends DateReport {
+    antiCheatStats: {
+        totalRequests: number;
+        totalBlocked: number;
+        totalPassed: number;
+        overallBlockRate: number;
+        overallPassRate: number;
+        byReason: Record<BlockReason, number>;
+        hourlyStats: TimeSlotAntiCheatStats[];
+    };
+}

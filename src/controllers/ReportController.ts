@@ -50,6 +50,17 @@ export class ReportController {
       return;
     }
 
+    const includeAntiCheat = req.query.includeAntiCheat === 'true';
+
+    if (includeAntiCheat) {
+      const report = this.reportService.getDateReportWithAntiCheat(date);
+      res.json({
+        success: true,
+        data: report,
+      });
+      return;
+    }
+
     const report = this.reportService.getDateReport(date);
 
     res.json({
@@ -60,6 +71,17 @@ export class ReportController {
 
   getTodayReport = (req: Request, res: Response): void => {
     const today = formatDate(Date.now());
+    const includeAntiCheat = req.query.includeAntiCheat === 'true';
+
+    if (includeAntiCheat) {
+      const report = this.reportService.getDateReportWithAntiCheat(today);
+      res.json({
+        success: true,
+        data: report,
+      });
+      return;
+    }
+
     const report = this.reportService.getDateReport(today);
 
     res.json({
@@ -68,3 +90,4 @@ export class ReportController {
     });
   };
 }
+
